@@ -3,6 +3,7 @@ package com.sevenheaven.kiwi;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Paint;
+import android.graphics.PointF;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
@@ -51,6 +52,7 @@ public class TestView extends View {
                 yR = event.getY() / (float) screenHeight;
 
                 xR = xR > 0.5F ? 0.5F : xR;
+                xR = xR < 0 ? 0 : xR;
                 break;
             case MotionEvent.ACTION_UP:
                 break;
@@ -65,10 +67,51 @@ public class TestView extends View {
     public void onDraw(Canvas canvas){
         super.onDraw(canvas);
 
-        StarShape starShape = new StarShape(5, xR, true, yR);
+        canvas.save();
+        canvas.translate(20, 20);
 
-        starShape.resize(300, 300);
+        paint.setColor(0xFF0099CC);
+        paint.setStyle(Paint.Style.STROKE);
+        paint.setStrokeWidth(10);
+
+        StarShape starShape = new StarShape(6, xR, true, yR);
+
+        starShape.resize(400, 400);
 
         starShape.draw(canvas, paint);
+
+        PointF[] controlPoint = starShape.getControlPoints();
+
+        if(controlPoint != null){
+
+
+            for(int i = 0; i < controlPoint.length; i++){
+                if(controlPoint[i] != null){
+
+                    paint.setColor(0x44000000);
+                    paint.setStyle(Paint.Style.STROKE);
+                    paint.setStrokeWidth(10);
+
+                    if(i == controlPoint.length - 1){
+                        canvas.drawLine(controlPoint[i].x, controlPoint[i].y, controlPoint[0].x, controlPoint[0].y, paint);
+                    }else{
+                        canvas.drawLine(controlPoint[i].x, controlPoint[i].y, controlPoint[i + 1].x, controlPoint[i + 1].y, paint);
+                    }
+
+                    paint.setColor(0xFFFF7733);
+                    paint.setStyle(Paint.Style.FILL);
+
+                    canvas.drawCircle(controlPoint[i].x, controlPoint[i].y, 4, paint);
+
+
+                }
+
+
+
+
+            }
+        }
+
+        canvas.restore();
     }
 }
