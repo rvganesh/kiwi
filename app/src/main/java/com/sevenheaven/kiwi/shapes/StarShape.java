@@ -3,11 +3,11 @@ package com.sevenheaven.kiwi.shapes;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Path;
-import android.graphics.Point;
+import android.graphics.PathMeasure;
 import android.graphics.PointF;
 import android.graphics.RectF;
 import android.graphics.drawable.shapes.RectShape;
-import android.util.Log;
+import android.widget.ListView;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -42,11 +42,18 @@ public class StarShape extends RectShape {
         starPath = new Path();
 
         controlPoints = new ArrayList<PointF>();
+
     }
 
     @Override
     public void draw(Canvas canvas, Paint paint){
 
+        calculateOutline();
+
+        if(canvas != null) canvas.drawPath(starPath, paint);
+    }
+
+    private void calculateOutline(){
         starPath.reset();
         controlPoints.clear();
 
@@ -167,8 +174,6 @@ public class StarShape extends RectShape {
 
             starPath.close();
         }
-
-        canvas.drawPath(starPath, paint);
     }
 
     private float[] segLine(float x0, float y0, float x1, float y1, float ratio){
@@ -190,5 +195,11 @@ public class StarShape extends RectShape {
 
     public PointF[] getControlPoints(){
         return controlPoints.toArray(new PointF[controlPoints.size()]);
+    }
+
+    public Path getOutline(){
+        calculateOutline();
+
+        return starPath;
     }
 }
