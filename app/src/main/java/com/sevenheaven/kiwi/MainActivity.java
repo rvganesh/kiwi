@@ -20,12 +20,10 @@ public class MainActivity extends ActionBarActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        testView = (TestView) findViewById(R.id.test_view);
-        dispalyPattern(generateSolution());
+//        testView = (TestView) findViewById(R.id.test_view);
+//        dispalyPattern(generateSolution());
 
-        TextView textView = null;
-        Layout layout = textView.getLayout();
-        layout.
+
     }
 
 

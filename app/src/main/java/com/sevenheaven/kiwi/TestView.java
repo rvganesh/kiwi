@@ -138,11 +138,6 @@ public class TestView extends View {
     public void onDraw(Canvas canvas){
         super.onDraw(canvas);
 
-        Matrix matrix;
-        matrix.postConcat();
-
-        FragmentActivity d;
-
         canvas.save();
         canvas.translate(20, 20);
 
