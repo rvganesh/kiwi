@@ -2,8 +2,10 @@ package com.sevenheaven.kiwi.widget;
 
 import android.content.Context;
 import android.graphics.Matrix;
+import android.graphics.Point;
 import android.graphics.PointF;
 import android.util.AttributeSet;
+import android.util.FloatMath;
 import android.util.Log;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
@@ -14,13 +16,27 @@ import android.widget.ImageView;
  */
 public class GestureImageView extends ImageView {
 
+    private static final int TOUCH_NONE = 0;
+    private static final int TOUCH_DRAG = 1;
+    private static final int TOUCH_ZOOM = 2;
+
+    private int mTouchMode = TOUCH_NONE;
+
     private PointF[] mStartPoints;
     private PointF[] mCurrentPoints;
 
     private float mCurrentScale;
     private PointF mImageAnchor;
 
-    private Matrix matrix;
+    int sDx = 0, sDy = 0;
+    int cDx = 0, cDy = 0;
+
+    float sDistance = 0;
+    float cDistance = 0;
+
+    private Matrix mMatrix;
+    private float mScale = 1;
+    private PointF mMatrixPoint;
 
     private GestureDetector gestureDetector;
 
@@ -51,72 +67,134 @@ public class GestureImageView extends ImageView {
         mImageAnchor = new PointF();
 
         gestureDetector = new GestureDetector(context, gestureListener);
+
+        mMatrix = new Matrix();
+        mMatrixPoint = new PointF();
     }
 
     @Override
     public boolean onTouchEvent(MotionEvent event){
+
+        float scale = 1;
+        PointF middlePoint = new PointF();
+        PointF sMiddlePoint = new PointF();
 
         int action = event.getAction();
 
         if(event.getPointerCount() > 0) Log.d("x0:" + event.getX(), "y0:" + event.getY());
         if(event.getPointerCount() > 1) Log.d("x1:" + event.getX(event.getPointerId(1)), "y1:" + event.getY(event.getPointerId(1)));
 
-        if(event.getPointerCount() <= 1){
-            switch(action){
-                case MotionEvent.ACTION_DOWN:
-                    mStartPoints[0].set(event.getX(), event.getY());
-                    break;
-                case MotionEvent.ACTION_MOVE:
-                    mCurrentPoints[0].set(event.getX(), event.getY());
-                    break;
-                case MotionEvent.ACTION_CANCEL:
-                case MotionEvent.ACTION_UP:
-                    mStartPoints[0].set(-1, -1);
-                    mCurrentPoints[0].set(-1, -1);
-                    break;
-            }
+        switch(event.getAction() & MotionEvent.ACTION_MASK){
+            case MotionEvent.ACTION_DOWN:
+                mTouchMode = TOUCH_DRAG;
+                mStartPoints[0].set(event.getX(), event.getY());
+                break;
+            case MotionEvent.ACTION_POINTER_DOWN:
+                mTouchMode = TOUCH_ZOOM;
+                mStartPoints[0].set(event.getX(0), event.getY(0));
+                mStartPoints[1].set(event.getX(1), event.getY(1));
 
-            return true;
-        }else{
-            switch(action){
-                case MotionEvent.ACTION_DOWN:
-                    mStartPoints[0].set(event.getX(event.getPointerId(0)), event.getY(event.getPointerId(0)));
-                    mStartPoints[1].set(event.getX(event.getPointerId(1)), event.getY(event.getPointerId(1)));
-                    break;
-                case MotionEvent.ACTION_MOVE:
-                    mCurrentPoints[0].set(event.getX(event.getPointerId(0)), event.getY(event.getPointerId(0)));
-                    mCurrentPoints[1].set(event.getX(event.getPointerId(1)), event.getY(event.getPointerId(1)));
+                sDx = (int) (mStartPoints[1].x - mStartPoints[0].x);
+                sDy = (int) (mStartPoints[1].y - mStartPoints[0].y);
 
-                    int sDx = (int) (mStartPoints[1].x - mStartPoints[0].x);
-                    int sDy = (int) (mStartPoints[1].y - mStartPoints[0].y);
+                sMiddlePoint = new PointF(mStartPoints[0].x + sDx / 2, mStartPoints[0].y + sDy / 2);
 
-                    int cDx = (int) (mCurrentPoints[1].x - mCurrentPoints[0].x);
-                    int cDy = (int) (mCurrentPoints[1].y - mCurrentPoints[0].y);
+                sDistance = (int) Math.sqrt(sDx * sDx + sDy * sDy);
 
-                    int sDistance = (int) Math.sqrt(sDx * sDx + sDy * sDy);
-                    int cDistance = (int) Math.sqrt(cDx * cDx + cDy * cDy);
+                break;
+            case MotionEvent.ACTION_MOVE:
+                if(event.getPointerCount() <= 1){
+                    mTouchMode = TOUCH_DRAG;
+                }else{
+                    mTouchMode = TOUCH_ZOOM;
+                }
+                Log.d("touchMode", mTouchMode == 1 ? "TOUCH_DRAG" : "TOUCH_ZOOM" );
+                switch(mTouchMode){
+                    case TOUCH_NONE:
+                        break;
+                    case TOUCH_DRAG:
+                        mCurrentPoints[0].set(event.getX(), event.getY());
 
-                    matrix = getImageMatrix();
+                        mMatrix.setScale(mScale, mScale);
+                        mMatrix.postTranslate(mCurrentPoints[0].x + (mMatrixPoint.x - mStartPoints[0].x), mCurrentPoints[0].y + (mMatrixPoint.y - mStartPoints[0].y));
 
-                    float scale = (float) cDistance / (float) sDistance;
+                        setImageMatrix(mMatrix);
+                        break;
+                    case TOUCH_ZOOM:
+                        mCurrentPoints[0].set(event.getX(0), event.getY(0));
+                        mCurrentPoints[1].set(event.getX(1), event.getY(1));
 
-                    Log.d("scale:" + scale, "scale");
+                        cDx = (int) (mCurrentPoints[1].x - mCurrentPoints[0].x);
+                        cDy = (int) (mCurrentPoints[1].y - mCurrentPoints[0].y);
 
-                    matrix.setScale(scale, scale);
+                        cDistance = (int) Math.sqrt(cDx * cDx + cDy * cDy);
 
-                    setImageMatrix(matrix);
+                        Log.d("cDistance:" + cDistance, "sDistance:" + sDistance);
 
-                    break;
-                case MotionEvent.ACTION_CANCEL:
-                case MotionEvent.ACTION_UP:
-                    mStartPoints[0].set(-1, -1);
-                    mStartPoints[1].set(-1, -1);
-                    mCurrentPoints[0].set(-1, -1);
-                    mCurrentPoints[1].set(-1, -1);
-                    break;
-            }
+                        scale = cDistance / sDistance;
+
+                        middlePoint = new PointF(mCurrentPoints[0].x + cDx / 2, mCurrentPoints[0].y + cDy / 2);
+                        Log.d("scale:" + scale, "scale");
+
+                        scale *= mScale;
+
+                        mMatrix.setScale(scale, scale);
+                        mMatrix.postTranslate(middlePoint.x, middlePoint.y);
+
+                        setImageMatrix(mMatrix);
+                        break;
+                }
+                break;
+            case MotionEvent.ACTION_POINTER_UP:
+                if(event.getPointerCount() <= 1){
+                    mTouchMode = TOUCH_DRAG;
+                }
+
+                mMatrixPoint.set(middlePoint.x, middlePoint.y);
+
+                break;
+            case MotionEvent.ACTION_CANCEL:
+            case MotionEvent.ACTION_UP:
+                mTouchMode = TOUCH_NONE;
+
+                mScale = scale;
+
+                mMatrixPoint.set(mCurrentPoints[0].x + (mMatrixPoint.x - mStartPoints[0].x), mCurrentPoints[0].y + (mMatrixPoint.y - mStartPoints[0].y));
+
+                break;
         }
 
+        Log.d("matrixPointX:" + mMatrixPoint.x, "matrixPointY:" + mMatrixPoint.y);
+
         return true;
+    }
+
+    @Override
+    public void setImageMatrix(Matrix matrix){
+        float[] currentValues = new float[9];
+        matrix.getValues(currentValues);
+
+        int scaledWidth = (int) (getDrawable().getIntrinsicWidth() * mScale);
+        int scaledHeight = (int) (getDrawable().getIntrinsicHeight() * mScale);
+
+        if(scaledWidth < getWidth()){
+            if(currentValues[2] < 0) currentValues[2] = 0;
+            if(currentValues[2] + scaledWidth > getWidth()) currentValues[2] = getWidth() - scaledWidth;
+        }else{
+            if(currentValues[2] > 0) currentValues[2] = 0;
+            if(currentValues[2] + scaledWidth < getWidth()) currentValues[2] = getWidth() - scaledWidth;
+        }
+
+        if(scaledHeight < getHeight()){
+            if(currentValues[5] < 0) currentValues[5] = 0;
+            if(currentValues[5] + scaledHeight > getHeight()) currentValues[5] = getHeight() - scaledHeight;
+        }else{
+
+        }
+
+        matrix.setValues(currentValues);
+
+
+        super.setImageMatrix(matrix);
     }
 }
