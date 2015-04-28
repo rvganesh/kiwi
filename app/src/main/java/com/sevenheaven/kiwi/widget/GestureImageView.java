@@ -25,6 +25,9 @@ public class GestureImageView extends ImageView {
     private PointF[] mStartPoints;
     private PointF[] mCurrentPoints;
 
+    PointF middlePoint;
+    PointF sMiddlePoint;
+
     private float mCurrentScale;
     private PointF mImageAnchor;
 
@@ -70,14 +73,13 @@ public class GestureImageView extends ImageView {
 
         mMatrix = new Matrix();
         mMatrixPoint = new PointF();
+
+        middlePoint = new PointF();
+        sMiddlePoint = new PointF();
     }
 
     @Override
     public boolean onTouchEvent(MotionEvent event){
-
-        float scale = 1;
-        PointF middlePoint = new PointF();
-        PointF sMiddlePoint = new PointF();
 
         int action = event.getAction();
 
@@ -131,15 +133,16 @@ public class GestureImageView extends ImageView {
 
                         Log.d("cDistance:" + cDistance, "sDistance:" + sDistance);
 
-                        scale = cDistance / sDistance;
+                        float scale = cDistance / sDistance;
 
                         middlePoint = new PointF(mCurrentPoints[0].x + cDx / 2, mCurrentPoints[0].y + cDy / 2);
                         Log.d("scale:" + scale, "scale");
 
                         scale *= mScale;
 
-                        mMatrix.setScale(scale, scale);
-                        mMatrix.postTranslate(middlePoint.x, middlePoint.y);
+
+                        mMatrix.setScale(scale, scale, sMiddlePoint.x-, sMiddlePoint.y);
+                        mMatrix.preTranslate(middlePoint.x + (mMatrixPoint.x - sMiddlePoint.x), middlePoint.y + (mMatrixPoint.y - sMiddlePoint.y));
 
                         setImageMatrix(mMatrix);
                         break;
@@ -150,16 +153,22 @@ public class GestureImageView extends ImageView {
                     mTouchMode = TOUCH_DRAG;
                 }
 
-                mMatrixPoint.set(middlePoint.x, middlePoint.y);
+                float[] values = new float[9];
+                mMatrix.getValues(values);
+
+                mScale = values[0];
+
+                mMatrixPoint.set(values[2], values[5]);
 
                 break;
             case MotionEvent.ACTION_CANCEL:
             case MotionEvent.ACTION_UP:
                 mTouchMode = TOUCH_NONE;
 
-                mScale = scale;
+                values = new float[9];
+                mMatrix.getValues(values);
 
-                mMatrixPoint.set(mCurrentPoints[0].x + (mMatrixPoint.x - mStartPoints[0].x), mCurrentPoints[0].y + (mMatrixPoint.y - mStartPoints[0].y));
+                mMatrixPoint.set(values[2], values[5]);
 
                 break;
         }
@@ -189,9 +198,9 @@ public class GestureImageView extends ImageView {
             if(currentValues[5] < 0) currentValues[5] = 0;
             if(currentValues[5] + scaledHeight > getHeight()) currentValues[5] = getHeight() - scaledHeight;
         }else{
-
+            if(currentValues[5] > 0) currentValues[5] = 0;
+            if(currentValues[5] + scaledHeight < getHeight()) currentValues[5] = getHeight() - scaledHeight;
         }
-
         matrix.setValues(currentValues);
 
 
